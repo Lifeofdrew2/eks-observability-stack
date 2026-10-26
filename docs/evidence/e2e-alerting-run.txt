@@ -1,0 +1,87 @@
+Local end-to-end alerting run
+Components: demo-api (this repo), node_exporter 1.12.1, Prometheus 3.15.1, Alertmanager 0.34.1,
+            load generator, webhook sink; rules and alertmanager.yml from this repo, unmodified
+            except hostnames (no Docker in the recording environment).
+Started: 2026-10-26T13:03:59Z
+
+[13:04:21Z] scrape targets:
+    demo-api up
+    node up
+    prometheus up
+[13:05:01Z] phase 1: normal traffic (1% simulated errors on one endpoint)
+[13:06:01Z]   req/s=4.265459  error_ratio_5m=0.001897  p95_s=0.004913
+[13:06:01Z]   alerts: none
+[13:06:01Z] phase 2: incident - 25% of /api/simulate/error calls fail
+[13:06:16Z]   error_ratio_5m=0.001897  alerts: none
+[13:06:31Z]   error_ratio_5m=0.012044  alerts: none
+[13:06:46Z]   error_ratio_5m=0.012044  alerts: DemoApiErrorBudgetSlowBurn=pending
+[13:07:01Z]   error_ratio_5m=0.024982  alerts: DemoApiErrorBudgetSlowBurn=pending
+[13:07:16Z]   error_ratio_5m=0.024982  alerts: DemoApiErrorBudgetFastBurn=pending, DemoApiErrorBudgetSlowBurn=pending
+[13:07:31Z]   error_ratio_5m=0.034699  alerts: DemoApiErrorBudgetFastBurn=pending, DemoApiErrorBudgetSlowBurn=pending
+[13:07:46Z]   error_ratio_5m=0.034699  alerts: DemoApiErrorBudgetFastBurn=pending, DemoApiErrorBudgetSlowBurn=pending
+[13:08:01Z]   error_ratio_5m=0.040552  alerts: DemoApiErrorBudgetFastBurn=pending, DemoApiErrorBudgetSlowBurn=pending
+[13:08:16Z]   error_ratio_5m=0.040552  alerts: DemoApiErrorBudgetFastBurn=pending, DemoApiErrorBudgetSlowBurn=pending
+[13:08:31Z]   error_ratio_5m=0.046009  alerts: DemoApiErrorBudgetFastBurn=pending, DemoApiErrorBudgetSlowBurn=pending
+[13:08:47Z]   error_ratio_5m=0.046009  alerts: DemoApiErrorBudgetFastBurn=pending, DemoApiErrorBudgetSlowBurn=pending
+[13:09:02Z]   error_ratio_5m=0.049110  alerts: DemoApiErrorBudgetFastBurn=pending, DemoApiErrorBudgetSlowBurn=pending
+[13:09:17Z]   error_ratio_5m=0.049110  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:09:32Z]   error_ratio_5m=0.054383  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:09:47Z]   error_ratio_5m=0.054383  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:09:47Z]   notifications received by webhook sink:
+      [pages] FIRING   DemoApiErrorBudgetFastBurn - demo-api is burning its error budget fast
+[13:09:47Z] phase 3: recovery - errors stopped
+[13:10:02Z]   error_ratio_5m=0.063220  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:10:17Z]   error_ratio_5m=0.063220  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:10:32Z]   error_ratio_5m=0.063063  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:10:47Z]   error_ratio_5m=0.063063  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:11:02Z]   error_ratio_5m=0.062725  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:11:17Z]   error_ratio_5m=0.062725  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:11:32Z]   error_ratio_5m=0.054054  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:11:47Z]   error_ratio_5m=0.054054  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:12:02Z]   error_ratio_5m=0.045904  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:12:17Z]   error_ratio_5m=0.045904  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:12:33Z]   error_ratio_5m=0.037747  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:12:48Z]   error_ratio_5m=0.037747  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:13:03Z]   error_ratio_5m=0.028477  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:13:18Z]   error_ratio_5m=0.028477  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:13:33Z]   error_ratio_5m=0.019784  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:13:48Z]   error_ratio_5m=0.019784  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:14:03Z]   error_ratio_5m=0.013452  alerts: DemoApiErrorBudgetFastBurn=firing, DemoApiErrorBudgetSlowBurn=pending
+[13:14:18Z]   error_ratio_5m=0.013452  alerts: DemoApiErrorBudgetSlowBurn=pending
+[13:14:33Z]   error_ratio_5m=0.004185  alerts: DemoApiErrorBudgetSlowBurn=pending
+[13:14:48Z]   error_ratio_5m=0.004185  alerts: DemoApiErrorBudgetSlowBurn=pending
+[13:14:48Z]   notifications received by webhook sink:
+      [pages] FIRING   DemoApiErrorBudgetFastBurn - demo-api is burning its error budget fast
+      [pages] RESOLVED DemoApiErrorBudgetFastBurn - demo-api is burning its error budget fast
+
+Dashboard queries (Service Overview + Node Resources), live results:
+   demo-api / Service Overview
+     OK  Availability (1h)  (1 series)
+     OK  Error budget remaining (30d)  (1 series)
+     OK  Requests / sec  (1 series)
+     OK  Error ratio (5m)  (1 series)
+     OK  p95 latency (5m)  (1 series)
+     OK  Healthy targets  (1 series)
+     OK  Request rate by route / {{route}}  (4 series)
+     OK  Responses by status code / {{status}}  (3 series)
+     OK  Error ratio vs burn-rate thresholds / 5m error ratio  (1 series)
+     OK  Error ratio vs burn-rate thresholds / 1h error ratio  (1 series)
+     OK  Error ratio vs burn-rate thresholds / fast-burn threshold (14.4x)  (1 series)
+     OK  Error ratio vs burn-rate thresholds / slow-burn threshold (6x)  (1 series)
+     OK  Latency percentiles / p50  (1 series)
+     OK  Latency percentiles / p95  (1 series)
+     OK  Latency percentiles / p99  (1 series)
+     OK  p95 latency by route / {{route}}  (4 series)
+   Nodes / Resource Utilisation
+     OK  Nodes  (1 series)
+     OK  Avg CPU  (1 series)
+     OK  Avg memory  (1 series)
+     OK  Fullest disk  (1 series)
+     OK  CPU utilisation / {{instance}}  (1 series)
+     OK  Memory utilisation / {{instance}}  (1 series)
+     OK  Disk usage / {{instance}} {{mountpoint}}  (4 series)
+     OK  Network traffic / {{instance}} rx  (1 series)
+     OK  Network traffic / {{instance}} tx  (1 series)
+     OK  Load average (1m) per CPU / {{instance}}  (1 series)
+
+Finished: 2026-10-26T13:14:48Z

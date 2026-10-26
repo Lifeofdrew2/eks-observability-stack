@@ -1,0 +1,83 @@
+# Offline validation output, captured by running ./scripts/verify.sh.
+# Recording environment: Linux, Python 3.13, promtool/amtool from Prometheus 3.15.1 /
+# Alertmanager 0.34.1, OpenTofu 1.10 (Terraform-compatible) with providers from a local
+# mirror, kubeconform 0.6.7, Docker Compose v5. Reproduce: ./scripts/verify.sh
+verify.sh - eks-observability-stack
+date:   2026-10-26T13:15:26Z
+commit: 6df9cdd
+promtool: promtool, version 3.15.1 (branch: HEAD, revision: bae3eced0a5369e050e83ea73bc381d7c4b1a719)
+
+=== App: lint (ruff) and unit tests (pytest)
+All checks passed!
+......                                                                   [100%]
+6 passed, 1 warning in 0.35s
+--> PASS
+
+=== Prometheus rules: syntax
+Checking prometheus/rules/app-alerts.yml
+  SUCCESS: 4 rules found
+
+Checking prometheus/rules/kubernetes-alerts.yml
+  SUCCESS: 3 rules found
+
+Checking prometheus/rules/node-alerts.yml
+  SUCCESS: 3 rules found
+
+Checking prometheus/rules/recording-rules.yml
+  SUCCESS: 7 rules found
+
+--> PASS
+
+=== Prometheus rules: alert unit tests
+  SUCCESS
+
+--> PASS
+
+=== Prometheus config
+Checking prometheus/prometheus.yml
+ SUCCESS: prometheus/prometheus.yml is valid prometheus config file syntax
+
+--> PASS
+
+=== Alertmanager config
+Checking 'alertmanager/alertmanager.yml'  SUCCESS
+Found:
+ - global config
+ - route
+ - 1 inhibit rules
+ - 2 receivers
+ - 0 templates
+
+--> PASS
+
+=== Grafana dashboards: valid JSON
+ok grafana/dashboards/demo-api-overview.json
+ok grafana/dashboards/node-resources.json
+--> PASS
+
+=== Grafana dashboards: every PromQL query parses
+26 queries
+Checking /tmp/tmp.MmXSEz5JYP/rules.yml
+  SUCCESS: 26 rules found
+
+--> PASS
+
+=== Generated Kubernetes files are in sync with sources
+--> PASS
+
+=== Kubernetes manifests incl. CRDs (kubeconform)
+Summary: 6 resources found in 3 files - Valid: 6, Invalid: 0, Errors: 0, Skipped: 0
+--> PASS
+
+=== CloudWatch Terraform: fmt + validate
+--> PASS
+Success! The configuration is valid.
+--> PASS
+
+=== Docker Compose file
+--> PASS
+
+=== GitHub Actions workflow (actionlint)
+--> PASS
+
+RESULT: all checks passed

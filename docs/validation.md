@@ -2,6 +2,8 @@
 
 ## Rule and config checks
 
+Raw output of the latest run: [evidence/offline-validation.txt](evidence/offline-validation.txt). Re-run any time with `./scripts/verify.sh`.
+
 | Check | Tool | Result |
 |---|---|---|
 | Rule syntax (17 rules in 4 files) | `promtool check rules` (Prometheus 3.15) | ✅ pass |
@@ -29,13 +31,15 @@
 
 ## End-to-end run
 
+Recorded log: [evidence/e2e-alerting-run.txt](evidence/e2e-alerting-run.txt) · chart: [evidence/fast-burn-alert-timeline.png](evidence/fast-burn-alert-timeline.png)
+
 The app, node_exporter, Prometheus 3.15 and Alertmanager 0.34 were run
 together with the load generator and this repository's unmodified rules:
 
 - All 3 scrape targets healthy; recording rules produced data within one evaluation.
 - **All 26 dashboard queries returned data** (both dashboards).
-- Raising the error rate to 25% moved `DemoApiErrorBudgetFastBurn` from
-  pending to **firing in about 3 minutes**, and Alertmanager delivered it to the
+- Raising the simulated error rate to 25% moved `DemoApiErrorBudgetFastBurn` from
+  pending to **firing about 3 minutes after errors began**, and Alertmanager delivered it to the
   `pages` receiver (critical route).
 - Dropping the error rate to 0 cleared the short (5m) window, so the alert
   resolved about 5 minutes later — even though the 1h window was still

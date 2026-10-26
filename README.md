@@ -1,5 +1,7 @@
 # Infrastructure Monitoring and Observability for Amazon EKS
 
+[![validate](https://github.com/Lifeofdrew2/eks-observability-stack/actions/workflows/validate.yml/badge.svg)](https://github.com/Lifeofdrew2/eks-observability-stack/actions/workflows/validate.yml)
+
 Infrastructure and application monitoring using **Prometheus**, **Grafana**
 and **Amazon CloudWatch**: visibility into resource utilisation, service
 health, application latency and incident indicators, with SLO-based alerting
@@ -50,6 +52,14 @@ flowchart LR
 | Container logs | Fluent Bit | CloudWatch Logs | – |
 
 See [docs/slo.md](docs/slo.md) for the SLO and why burn-rate alerting is used.
+
+## Recorded alert run
+
+A real incident simulation, recorded with this repo's unmodified rules
+([raw log](docs/evidence/e2e-alerting-run.txt)): the fast-burn alert fired about 3 minutes
+after errors began, paged the critical receiver, and resolved once the short window recovered.
+
+![Fast-burn alert timeline](docs/evidence/fast-burn-alert-timeline.png)
 
 ## Try it locally (no AWS needed)
 
