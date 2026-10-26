@@ -1,0 +1,60 @@
+# Application alerts for demo-api.
+# SLO: 99.9% of requests succeed (non-5xx) over 30 days -> error budget = 0.1%.
+# Burn-rate thresholds follow the multi-window approach from the Google SRE
+# Workbook: page on fast burn, open a ticket on slow burn.
+groups:
+  - name: demo-api-alerts
+    rules:
+      - alert: DemoApiUnavailable
+        # Fires per namespace when every target is down, or when no target exists at all.
+        expr: |
+          (sum by (namespace) (up{job="demo-api"}) == 0)
+          or
+          absent(up{job="demo-api"})
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No healthy demo-api targets{{ with $labels.namespace }} in {{ . }}{{ end }}"
+          description: Prometheus has not successfully scraped any demo-api instance for 1 minute.
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapiunavailable
+
+      - alert: DemoApiErrorBudgetFastBurn
+        # 14.4x burn rate = 2% of a 30-day budget consumed in 1 hour.
+        expr: |
+          job:http_error_ratio:rate1h{job="demo-api"} > (14.4 * 0.001)
+          and
+          job:http_error_ratio:rate5m{job="demo-api"} > (14.4 * 0.001)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: demo-api is burning its error budget fast
+          description: >-
+            Error ratio is {{ $value | humanizePercentage }} over the last hour,
+            more than 14.4x the 0.1% budget. At this rate the monthly budget is gone in about 2 days.
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapierrorbudgetfastburn
+
+      - alert: DemoApiErrorBudgetSlowBurn
+        # 6x burn rate = 5% of a 30-day budget consumed in 6 hours.
+        expr: |
+          job:http_error_ratio:rate6h{job="demo-api"} > (6 * 0.001)
+          and
+          job:http_error_ratio:rate30m{job="demo-api"} > (6 * 0.001)
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: demo-api is steadily consuming its error budget
+          description: Error ratio is {{ $value | humanizePercentage }} over 6 hours (more than 6x the budget).
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapierrorbudgetslowburn
+
+      - alert: DemoApiHighLatency
+        expr: job:http_request_duration_seconds:p95_5m{job="demo-api"} > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: demo-api p95 latency above 500ms
+          description: 95th percentile latency is {{ $value | humanizeDuration }} (threshold 500ms).
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapihighlatency

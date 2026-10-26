@@ -1,0 +1,41 @@
+# Routes critical alerts (pages) and warnings (tickets) to different receivers.
+# Locally both go to a webhook sink so you can watch them arrive; replace the
+# receivers with Slack, PagerDuty, Opsgenie or email for real use.
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: tickets
+  group_by: ["alertname", "namespace"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: pages
+      matchers:
+        - severity = "critical"
+      repeat_interval: 1h
+
+# Don't send a warning while the matching critical alert for the same
+# service is already firing.
+inhibit_rules:
+  - source_matchers: ['severity = "critical"']
+    target_matchers: ['severity = "warning"']
+    equal: ["namespace"]
+
+receivers:
+  - name: pages
+    webhook_configs:
+      - url: http://webhook-sink:8080/pages
+        send_resolved: true
+  - name: tickets
+    webhook_configs:
+      - url: http://webhook-sink:8080/tickets
+        send_resolved: true
+  # Example Slack receiver:
+  # - name: pages
+  #   slack_configs:
+  #     - api_url_file: /etc/alertmanager/secrets/slack-webhook-url
+  #       channel: "#alerts"
+  #       title: '{{ .CommonAnnotations.summary }}'
+  #       text: '{{ .CommonAnnotations.description }} {{ .CommonAnnotations.runbook_url }}'

@@ -1,0 +1,42 @@
+# Pre-computed series used by dashboards and alerts. Recording rules keep
+# dashboards fast and make alert expressions short and readable.
+groups:
+  - name: demo-api-sli
+    interval: 30s
+    rules:
+      # ---- Traffic -------------------------------------------------------
+      - record: job:http_requests:rate5m
+        expr: sum by (namespace, job) (rate(http_requests_total{job="demo-api"}[5m]))
+
+      # ---- Errors (ratio of 5xx responses) ------------------------------
+      # Several windows are needed for multi-window burn-rate alerting.
+      - record: job:http_error_ratio:rate5m
+        expr: |
+          sum by (namespace, job) (rate(http_requests_total{job="demo-api", status=~"5.."}[5m]))
+          /
+          sum by (namespace, job) (rate(http_requests_total{job="demo-api"}[5m]))
+      - record: job:http_error_ratio:rate30m
+        expr: |
+          sum by (namespace, job) (rate(http_requests_total{job="demo-api", status=~"5.."}[30m]))
+          /
+          sum by (namespace, job) (rate(http_requests_total{job="demo-api"}[30m]))
+      - record: job:http_error_ratio:rate1h
+        expr: |
+          sum by (namespace, job) (rate(http_requests_total{job="demo-api", status=~"5.."}[1h]))
+          /
+          sum by (namespace, job) (rate(http_requests_total{job="demo-api"}[1h]))
+      - record: job:http_error_ratio:rate6h
+        expr: |
+          sum by (namespace, job) (rate(http_requests_total{job="demo-api", status=~"5.."}[6h]))
+          /
+          sum by (namespace, job) (rate(http_requests_total{job="demo-api"}[6h]))
+
+      # ---- Latency -------------------------------------------------------
+      - record: job:http_request_duration_seconds:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (namespace, job, le) (rate(http_request_duration_seconds_bucket{job="demo-api"}[5m])))
+      - record: job_route:http_request_duration_seconds:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (namespace, job, route, le) (rate(http_request_duration_seconds_bucket{job="demo-api"}[5m])))

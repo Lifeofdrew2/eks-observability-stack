@@ -1,0 +1,37 @@
+# Host-level resource alerts from node_exporter.
+groups:
+  - name: node-resources
+    rules:
+      - alert: NodeHighCpu
+        expr: |
+          100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 85
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU above 85% on {{ $labels.instance }}"
+          description: "CPU utilisation is {{ $value | printf \"%.0f\" }}% for 15 minutes."
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#nodehighcpu
+
+      - alert: NodeHighMemory
+        expr: |
+          100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory above 90% on {{ $labels.instance }}"
+          description: "Memory utilisation is {{ $value | printf \"%.0f\" }}%. Pods may be OOM-killed or evicted."
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#nodehighmemory
+
+      - alert: NodeDiskAlmostFull
+        expr: |
+          100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}
+                   / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"}) > 85
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk above 85% on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+          description: "Filesystem usage is {{ $value | printf \"%.0f\" }}%. Kubelet image garbage collection or eviction may start."
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#nodediskalmostfull

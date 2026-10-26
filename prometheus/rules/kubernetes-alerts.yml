@@ -1,0 +1,41 @@
+# Workload alerts for the demo namespaces. These use kube-state-metrics,
+# which kube-prometheus-stack installs, so they only evaluate in-cluster.
+# (The chart's default rules already cover the cluster itself.)
+groups:
+  - name: demo-api-kubernetes
+    rules:
+      - alert: DemoApiPodRestarting
+        expr: |
+          increase(kube_pod_container_status_restarts_total{namespace=~"demo.*", container="demo-api"}[15m]) > 3
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted more than 3 times in 15m"
+          description: Likely crash loop or failing liveness probe. Check logs from the previous container.
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapipodrestarting
+
+      - alert: DemoApiReplicasUnavailable
+        expr: |
+          kube_deployment_status_replicas_available{namespace=~"demo.*", deployment="demo-api"}
+          <
+          kube_deployment_spec_replicas{namespace=~"demo.*", deployment="demo-api"}
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.namespace }}/demo-api is running below desired replicas"
+          description: Some replicas have been unavailable for 10 minutes (scheduling, image pull or readiness problems).
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapireplicasunavailable
+
+      - alert: DemoApiAutoscalerAtMax
+        expr: |
+          kube_horizontalpodautoscaler_status_current_replicas{namespace=~"demo.*", horizontalpodautoscaler="demo-api"}
+          >=
+          kube_horizontalpodautoscaler_spec_max_replicas{namespace=~"demo.*", horizontalpodautoscaler="demo-api"}
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.namespace }}/demo-api autoscaler is pinned at max replicas"
+          description: The HPA cannot add more pods. Raise maxReplicas or investigate the load.
+          runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapiautoscaleratmax

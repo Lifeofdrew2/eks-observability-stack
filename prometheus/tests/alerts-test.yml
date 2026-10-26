@@ -1,0 +1,132 @@
+# Unit tests for alerting and recording rules.
+# Run: promtool test rules prometheus/tests/alerts-test.yml
+rule_files:
+  - ../rules/recording-rules.yml
+  - ../rules/app-alerts.yml
+  - ../rules/node-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  # 1. All demo-api targets down -> critical page after 1 minute.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="demo-api", namespace="demo", instance="10.0.1.10:8080"}'
+        values: "0x10"
+      - series: 'up{job="demo-api", namespace="demo", instance="10.0.2.10:8080"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 30s
+        alertname: DemoApiUnavailable
+        exp_alerts: [] # still pending inside the 1m "for" window
+      - eval_time: 3m
+        alertname: DemoApiUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              namespace: demo
+            exp_annotations:
+              summary: No healthy demo-api targets in demo
+              description: Prometheus has not successfully scraped any demo-api instance for 1 minute.
+              runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapiunavailable
+
+  # 2. One of two targets down -> no page (the service is still serving).
+  - interval: 1m
+    input_series:
+      - series: 'up{job="demo-api", namespace="demo", instance="10.0.1.10:8080"}'
+        values: "1x10"
+      - series: 'up{job="demo-api", namespace="demo", instance="10.0.2.10:8080"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: DemoApiUnavailable
+        exp_alerts: []
+
+  # 3. 5% of requests fail (50x the 0.1% budget) -> fast-burn page.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="demo-api", namespace="demo", route="/api/orders", status="200"}'
+        values: "0+950x120"
+      - series: 'http_requests_total{job="demo-api", namespace="demo", route="/api/orders", status="500"}'
+        values: "0+50x120"
+    promql_expr_test:
+      - expr: round(job:http_error_ratio:rate5m, 0.0001)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{job="demo-api", namespace="demo"}'
+            value: 0.05
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DemoApiErrorBudgetFastBurn
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: demo-api
+              namespace: demo
+            exp_annotations:
+              summary: demo-api is burning its error budget fast
+              description: >-
+                Error ratio is 5% over the last hour, more than 14.4x the 0.1% budget.
+                At this rate the monthly budget is gone in about 2 days.
+              runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapierrorbudgetfastburn
+
+  # 4. Healthy traffic (0.05% errors, within budget) -> no burn alerts.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="demo-api", namespace="demo", route="/api/orders", status="200"}'
+        values: "0+1999x120"
+      - series: 'http_requests_total{job="demo-api", namespace="demo", route="/api/orders", status="500"}'
+        values: "0+1x120"
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: DemoApiErrorBudgetFastBurn
+        exp_alerts: []
+      - eval_time: 60m
+        alertname: DemoApiErrorBudgetSlowBurn
+        exp_alerts: []
+
+  # 5. Every request takes 0.5-1s -> p95 above 500ms -> latency warning after 10m.
+  - interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{job="demo-api", namespace="demo", route="/api/orders", le="0.25"}'
+        values: "0x30"
+      - series: 'http_request_duration_seconds_bucket{job="demo-api", namespace="demo", route="/api/orders", le="0.5"}'
+        values: "0x30"
+      - series: 'http_request_duration_seconds_bucket{job="demo-api", namespace="demo", route="/api/orders", le="1"}'
+        values: "0+10x30"
+      - series: 'http_request_duration_seconds_bucket{job="demo-api", namespace="demo", route="/api/orders", le="+Inf"}'
+        values: "0+10x30"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: DemoApiHighLatency
+        exp_alerts: [] # pending
+      - eval_time: 20m
+        alertname: DemoApiHighLatency
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: demo-api
+              namespace: demo
+            exp_annotations:
+              summary: demo-api p95 latency above 500ms
+              description: 95th percentile latency is 975ms (threshold 500ms).
+              runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#demoapihighlatency
+
+  # 6. Node memory at 95% for over 10 minutes.
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemAvailable_bytes{instance="node-a"}'
+        values: "5x30"
+      - series: 'node_memory_MemTotal_bytes{instance="node-a"}'
+        values: "100x30"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: NodeHighMemory
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: node-a
+            exp_annotations:
+              summary: Memory above 90% on node-a
+              description: Memory utilisation is 95%. Pods may be OOM-killed or evicted.
+              runbook_url: https://github.com/Lifeofdrew2/eks-observability-stack/blob/main/docs/runbooks.md#nodehighmemory

@@ -1,0 +1,95 @@
+# Run the full monitoring stack on a laptop - no AWS account needed.
+#   docker compose -f local/docker-compose.yml up -d --build
+# Grafana:      http://localhost:3000  (admin / admin)
+# Prometheus:   http://localhost:9090
+# Alertmanager: http://localhost:9093
+name: observability-demo
+
+services:
+  demo-api:
+    build:
+      context: ../app
+      args:
+        APP_VERSION: local
+    ports: ["8080:8080"]
+    restart: unless-stopped
+
+  # Generates steady traffic plus occasional errors and slow requests,
+  # so dashboards have data and alerts can be triggered on demand.
+  loadgen:
+    image: curlimages/curl:8.16.0
+    depends_on: [demo-api]
+    entrypoint: ["/bin/sh", "/loadgen.sh"]
+    environment:
+      ERROR_RATE: ${ERROR_RATE:-0.01}
+      SLOW_MS: ${SLOW_MS:-300}
+    volumes:
+      - ./loadgen.sh:/loadgen.sh:ro
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-lifecycle
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/rules:/etc/prometheus/rules:ro
+    ports: ["9090:9090"]
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes:
+      - ../alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports: ["9093:9093"]
+    restart: unless-stopped
+
+  # Prints every alert notification it receives: `docker compose logs -f webhook-sink`
+  webhook-sink:
+    image: python:3.12-slim
+    command:
+      - python
+      - -u
+      - -c
+      - |
+        import json
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+
+        class Sink(BaseHTTPRequestHandler):
+            def do_POST(self):
+                body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                for a in body.get("alerts", []):
+                    print(f"[{self.path.strip('/')}] {a['status'].upper():8} "
+                          f"{a['labels'].get('alertname')} - {a['annotations'].get('summary')}")
+                self.send_response(200)
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        HTTPServer(("0.0.0.0", 8080), Sink).serve_forever()
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.4.13
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+    restart: unless-stopped

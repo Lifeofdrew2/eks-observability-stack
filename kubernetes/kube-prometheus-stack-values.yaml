@@ -1,0 +1,91 @@
+# Values for the prometheus-community/kube-prometheus-stack Helm chart.
+# Installs Prometheus Operator, Prometheus, Alertmanager, Grafana,
+# node-exporter and kube-state-metrics.
+
+# Pick up ServiceMonitors / PrometheusRules from any namespace without
+# requiring the Helm release label.
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    retention: 7d
+    retentionSize: 8GB
+    replicas: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3 # created by aws-eks-platform (EBS CSI driver)
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    externalLabels:
+      cluster: demo-platform-dev
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  # Same routing as alertmanager/alertmanager.yml. Replace the null receiver
+  # with Slack/PagerDuty (store webhook URLs in a Secret, not in this file).
+  config:
+    route:
+      receiver: "null"
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - receiver: "null"
+          matchers: ['alertname = "Watchdog"']
+        - receiver: pages
+          matchers: ['severity = "critical"']
+          repeat_interval: 1h
+        - receiver: tickets
+          matchers: ['severity = "warning"']
+    inhibit_rules:
+      - source_matchers: ['severity = "critical"']
+        target_matchers: ['severity = "warning"']
+        equal: ["namespace"]
+    receivers:
+      - name: "null"
+      - name: pages
+      - name: tickets
+
+grafana:
+  # Set a real password at install time:
+  #   --set grafana.adminPassword="$(openssl rand -base64 18)"
+  adminPassword: change-me
+  defaultDashboardsTimezone: browser
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+# Managed control plane: EKS does not expose these components for scraping.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false

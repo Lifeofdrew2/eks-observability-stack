@@ -1,0 +1,9 @@
+region       = "eu-west-1"
+cluster_name = "demo-platform-dev"
+alert_email  = "you@example.com"
+
+# After the app's Ingress creates the ALB, fill these in from:
+#   aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `k8s-demo`)].LoadBalancerArn'
+# then take everything after "loadbalancer/" (e.g. app/k8s-demo-demoapi-1234567890/abcdef0123456789)
+alb_arn_suffix          = ""
+target_group_arn_suffix = ""
